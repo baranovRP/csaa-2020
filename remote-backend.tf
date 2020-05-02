@@ -1,3 +1,4 @@
+# it's workable but turn off to reduce payment for usage s3, dynamodb
 /*
 terraform {
   required_version = "~> v0.12"

@@ -9,6 +9,8 @@ data "aws_ami" "latest_amzn2_linux" {
   owners = ["137112412989"]
 }
 
+# single web server replaced by auto scalable group
+/*
 resource "aws_instance" "tf_web_server01" {
   ami           = data.aws_ami.latest_amzn2_linux.id
   instance_type = "t2.micro"
@@ -21,6 +23,38 @@ resource "aws_instance" "tf_web_server01" {
 
   tags = {
     Name = "tfWebServer01"
+  }
+}
+*/
+
+data "aws_availability_zones" "available" {
+}
+
+resource "aws_launch_configuration" "tf_web_launch_config" {
+  image_id      = "ami-076431be05aaf8080"
+  instance_type = "t2.micro"
+  key_name      = aws_key_pair.deployer.key_name
+  user_data     = file("user_data.sh")
+
+  security_groups             = [aws_security_group.tf_sg_web_dmz.id]
+  associate_public_ip_address = true
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_autoscaling_group" "tf_web_server_autoscaling" {
+  launch_configuration = aws_launch_configuration.tf_web_launch_config.id
+  min_size             = 3
+  max_size             = 5
+  vpc_zone_identifier  = [aws_subnet.tf_subnet1.id]
+  availability_zones   = data.aws_availability_zones.available.names
+
+  tag {
+    key                 = "Name"
+    value               = "tfWebServer"
+    propagate_at_launch = true
   }
 }
 

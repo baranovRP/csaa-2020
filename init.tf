@@ -1,3 +1,5 @@
+# it's workable but turn off to reduce payment for usage s3, dynamodb
+
 /*
 resource "aws_s3_bucket" "terraform_state" {
   bucket = "terraform-state-bea832"
