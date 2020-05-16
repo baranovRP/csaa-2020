@@ -105,8 +105,8 @@ resource "aws_instance" "public" {
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.public.id
   security_groups = [
-    aws_security_group.ssh.id,
-    aws_security_group.web.id,
+    aws_security_group.ssh_world.id,
+    aws_security_group.web_world.id,
     aws_security_group.world.id
   ]
   key_name                    = aws_key_pair.deployer.key_name
@@ -118,10 +118,17 @@ resource "aws_instance" "public" {
 }
 
 resource "aws_instance" "private" {
-  ami                         = data.aws_ami.ami2.id
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.private.id
-  security_groups             = [data.aws_security_group.default.id]
+  ami           = data.aws_ami.ami2.id
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.private.id
+  security_groups = [
+    aws_security_group.icmp_private.id,
+    aws_security_group.ssh_priv_private.id,
+    aws_security_group.mysql_private.id,
+    aws_security_group.web_private.id,
+    aws_security_group.web_secure_private.id,
+    aws_security_group.world.id
+  ]
   key_name                    = aws_key_pair.deployer.key_name
   associate_public_ip_address = false
 
@@ -130,14 +137,14 @@ resource "aws_instance" "private" {
   }
 }
 
-resource "aws_security_group" "ssh" {
+resource "aws_security_group" "ssh_world" {
   name   = "ssh"
   vpc_id = aws_vpc.this.id
 }
 
 resource "aws_security_group_rule" "allow_ssh" {
   type              = "ingress"
-  security_group_id = aws_security_group.ssh.id
+  security_group_id = aws_security_group.ssh_world.id
 
   from_port   = 22
   to_port     = 22
@@ -145,14 +152,14 @@ resource "aws_security_group_rule" "allow_ssh" {
   cidr_blocks = ["0.0.0.0/0"]
 }
 
-resource "aws_security_group" "web" {
+resource "aws_security_group" "web_world" {
   name   = "web"
   vpc_id = aws_vpc.this.id
 }
 
 resource "aws_security_group_rule" "allow_web" {
   type              = "ingress"
-  security_group_id = aws_security_group.web.id
+  security_group_id = aws_security_group.web_world.id
 
   from_port   = 80
   to_port     = 80
@@ -174,4 +181,79 @@ resource "aws_security_group_rule" "allow_all_out" {
   protocol         = -1
   cidr_blocks      = ["0.0.0.0/0"]
   ipv6_cidr_blocks = ["::/0"]
+}
+
+resource "aws_security_group" "icmp_private" {
+  name   = "icmp_priv"
+  vpc_id = aws_vpc.this.id
+}
+
+resource "aws_security_group_rule" "allow_icmp" {
+  type              = "ingress"
+  security_group_id = aws_security_group.icmp_private.id
+
+  from_port   = -1
+  to_port     = -1
+  protocol    = "ICMP"
+  cidr_blocks = ["10.0.1.0/24"]
+}
+
+resource "aws_security_group" "web_private" {
+  name   = "web_priv"
+  vpc_id = aws_vpc.this.id
+}
+
+resource "aws_security_group_rule" "allow_web_priv" {
+  type              = "ingress"
+  security_group_id = aws_security_group.web_private.id
+
+  from_port   = 80
+  to_port     = 80
+  protocol    = "TCP"
+  cidr_blocks = ["10.0.1.0/24"]
+}
+
+resource "aws_security_group" "web_secure_private" {
+  name   = "web_secure_priv"
+  vpc_id = aws_vpc.this.id
+}
+
+resource "aws_security_group_rule" "allow_web_secure" {
+  type              = "ingress"
+  security_group_id = aws_security_group.web_secure_private.id
+
+  from_port   = 443
+  to_port     = 443
+  protocol    = "TCP"
+  cidr_blocks = ["10.0.1.0/24"]
+}
+
+resource "aws_security_group" "mysql_private" {
+  name   = "mysql_priv"
+  vpc_id = aws_vpc.this.id
+}
+
+resource "aws_security_group_rule" "allow_mysql" {
+  type              = "ingress"
+  security_group_id = aws_security_group.mysql_private.id
+
+  from_port   = 3306
+  to_port     = 3306
+  protocol    = "TCP"
+  cidr_blocks = ["10.0.1.0/24"]
+}
+
+resource "aws_security_group" "ssh_priv_private" {
+  name   = "ssh_priv"
+  vpc_id = aws_vpc.this.id
+}
+
+resource "aws_security_group_rule" "allow_ssh_priv" {
+  type              = "ingress"
+  security_group_id = aws_security_group.ssh_priv_private.id
+
+  from_port   = 22
+  to_port     = 22
+  protocol    = "TCP"
+  cidr_blocks = ["10.0.1.0/24"]
 }
