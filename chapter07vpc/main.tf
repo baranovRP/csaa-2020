@@ -13,7 +13,7 @@ data "aws_availability_zones" "available" {
   all_availability_zones = true
 }
 
-resource "aws_vpc" "acloudguru_vpc" {
+resource "aws_vpc" "this" {
   cidr_block                       = "10.0.0.0/16"
   assign_generated_ipv6_cidr_block = true
 
@@ -22,9 +22,9 @@ resource "aws_vpc" "acloudguru_vpc" {
   }
 }
 
-resource "aws_subnet" "acloudguru_sub01" {
+resource "aws_subnet" "public" {
   cidr_block              = "10.0.1.0/24"
-  vpc_id                  = aws_vpc.acloudguru_vpc.id
+  vpc_id                  = aws_vpc.this.id
   availability_zone_id    = data.aws_availability_zones.available.zone_ids[0]
   map_public_ip_on_launch = true
 
@@ -33,9 +33,9 @@ resource "aws_subnet" "acloudguru_sub01" {
   }
 }
 
-resource "aws_subnet" "acloudguru_sub02" {
+resource "aws_subnet" "private" {
   cidr_block           = "10.0.2.0/24"
-  vpc_id               = aws_vpc.acloudguru_vpc.id
+  vpc_id               = aws_vpc.this.id
   availability_zone_id = data.aws_availability_zones.available.zone_ids[1]
 
   tags = {
@@ -43,10 +43,33 @@ resource "aws_subnet" "acloudguru_sub02" {
   }
 }
 
-resource "aws_internet_gateway" "acloudguru_igw01" {
-  vpc_id = aws_vpc.acloudguru_vpc.id
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
 
   tags = {
     Name = "IGW"
   }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
+
+  route {
+    ipv6_cidr_block = "::/0"
+    gateway_id      = aws_internet_gateway.this.id
+  }
+
+  tags = {
+    Name = "acloudguru public route"
+  }
+}
+
+resource "aws_route_table_association" "this" {
+  route_table_id = aws_route_table.public.id
+  subnet_id      = aws_subnet.public.id
 }
