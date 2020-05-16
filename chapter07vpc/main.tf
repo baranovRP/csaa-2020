@@ -42,3 +42,11 @@ resource "aws_subnet" "acloudguru_sub02" {
     Name = "10.0.1.0 - ${data.aws_availability_zones.available.names[1]}"
   }
 }
+
+resource "aws_internet_gateway" "acloudguru_igw01" {
+  vpc_id = aws_vpc.acloudguru_vpc.id
+
+  tags = {
+    Name = "IGW"
+  }
+}
