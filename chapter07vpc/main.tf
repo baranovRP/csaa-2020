@@ -29,6 +29,7 @@ data "aws_ami" "ami2" {
   owners = ["amazon"]
 }
 
+/*
 data "aws_ami" "nat" {
   most_recent = true
 
@@ -49,6 +50,7 @@ data "aws_ami" "nat" {
 
   owners = ["amazon"]
 }
+*/
 
 data "aws_security_group" "default" {
   vpc_id = aws_vpc.this.id
@@ -116,6 +118,8 @@ resource "aws_route_table" "public" {
   }
 }
 
+### NAT instance
+/*
 resource "aws_default_route_table" "r" {
   default_route_table_id = aws_vpc.this.default_route_table_id
 
@@ -128,6 +132,28 @@ resource "aws_default_route_table" "r" {
     Name = "default"
   }
 }
+*/
+
+/*
+resource "aws_instance" "public_nat" {
+  ami           = data.aws_ami.ami2.id
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public.id
+  security_groups = [
+    aws_security_group.ssh_world.id,
+    aws_security_group.web_world.id,
+    aws_security_group.world.id
+  ]
+  key_name                    = aws_key_pair.deployer.key_name
+  associate_public_ip_address = true
+  source_dest_check           = false
+
+  tags = {
+    Name = "acloudguru public nat ec2"
+  }
+}
+*/
+###
 
 resource "aws_route_table_association" "this" {
   route_table_id = aws_route_table.public.id
@@ -168,24 +194,6 @@ resource "aws_instance" "private" {
 
   tags = {
     Name = "acloudguru private ec2"
-  }
-}
-
-resource "aws_instance" "public_nat" {
-  ami           = data.aws_ami.ami2.id
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public.id
-  security_groups = [
-    aws_security_group.ssh_world.id,
-    aws_security_group.web_world.id,
-    aws_security_group.world.id
-  ]
-  key_name                    = aws_key_pair.deployer.key_name
-  associate_public_ip_address = true
-  source_dest_check           = false
-
-  tags = {
-    Name = "acloudguru public nat ec2"
   }
 }
 
@@ -308,4 +316,27 @@ resource "aws_security_group_rule" "allow_ssh_priv" {
   to_port     = 22
   protocol    = "TCP"
   cidr_blocks = ["10.0.1.0/24"]
+}
+
+### NAT Gateway
+resource "aws_eip" "nat" {
+  vpc = true
+}
+
+resource "aws_nat_gateway" "sub01" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public.id
+}
+
+resource "aws_default_route_table" "r" {
+  default_route_table_id = aws_vpc.this.default_route_table_id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.sub01.id
+  }
+
+  tags = {
+    Name = "default"
+  }
 }
