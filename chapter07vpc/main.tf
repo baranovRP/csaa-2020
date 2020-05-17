@@ -29,6 +29,27 @@ data "aws_ami" "ami2" {
   owners = ["amazon"]
 }
 
+data "aws_ami" "nat" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["amzn-ami-vpc-nat-*-ebs"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["amazon"]
+}
+
 data "aws_security_group" "default" {
   vpc_id = aws_vpc.this.id
   name   = "default"
@@ -95,6 +116,19 @@ resource "aws_route_table" "public" {
   }
 }
 
+resource "aws_default_route_table" "r" {
+  default_route_table_id = aws_vpc.this.default_route_table_id
+
+  route {
+    cidr_block  = "0.0.0.0/0"
+    instance_id = aws_instance.public_nat.id
+  }
+
+  tags = {
+    Name = "default"
+  }
+}
+
 resource "aws_route_table_association" "this" {
   route_table_id = aws_route_table.public.id
   subnet_id      = aws_subnet.public.id
@@ -134,6 +168,24 @@ resource "aws_instance" "private" {
 
   tags = {
     Name = "acloudguru private ec2"
+  }
+}
+
+resource "aws_instance" "public_nat" {
+  ami           = data.aws_ami.ami2.id
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public.id
+  security_groups = [
+    aws_security_group.ssh_world.id,
+    aws_security_group.web_world.id,
+    aws_security_group.world.id
+  ]
+  key_name                    = aws_key_pair.deployer.key_name
+  associate_public_ip_address = true
+  source_dest_check           = false
+
+  tags = {
+    Name = "acloudguru public nat ec2"
   }
 }
 
